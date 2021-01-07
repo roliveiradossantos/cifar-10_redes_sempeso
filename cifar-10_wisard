@@ -1,0 +1,60 @@
+cd cifar10-classifier
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns; sns.set()
+from keras.datasets import cifar10
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import confusion_matrix
+from keras.layers import Conv2D, MaxPool2D, Flatten, Dense, Dropout
+from keras.models import Sequential, load_model
+from keras.callbacks import EarlyStopping
+import wisardpkg as wp
+from tools import evaluation, flatten, print_images
+from skimage.color import rgb2gray
+
+(X_train, y_train), (X_test, y_test) = cifar10.load_data()
+
+labels = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+X_train = np.array([cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for image in X_train])
+X_test = np.array([cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for image in X_test])
+
+fig, axes = plt.subplots(ncols=7, nrows=3, figsize=(17, 8))
+index = 0
+for i in range(3):
+    for j in range(7):
+        axes[i,j].set_title(labels[y_train[index][0]])
+        axes[i,j].imshow(X_train[index], cmap='gray')
+        axes[i,j].get_xaxis().set_visible(False)
+        axes[i,j].get_yaxis().set_visible(False)
+        index += 1
+plt.show()
+
+y_train = [str(label) for label in y_train]
+y_test = [str(label) for label in y_test]
+
+threshold = 125
+X_train = np.where(X_train > threshold, 1, 0)
+X_test = np.where(X_test > threshold, 1, 0)
+
+X_train = [flatten(sample) for sample in X_train]
+X_test = [flatten(sample) for sample in X_test]
+
+model = wp.Wisard(15)
+
+model.train(X_train, y_train)
+
+prediction = model.classify(X_test)
+
+evaluation(prediction, y_test)
+
+cm = confusion_matrix(y_test, prediction)
+
+plt.figure(figsize=(15,5))
+sns.heatmap(cm, cbar=False, xticklabels=labels,
+            yticklabels=labels, fmt='d', annot=True, cmap=plt.cm.Blues)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
